@@ -1,42 +1,103 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() => runApp(MyApp());
+void main() {
+  runApp(MyApp());
+}
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      // Application name
-      title: 'Flutter Hello World',
-      // Application theme data, you can set the colors for the application as
-      // you want
+      title: 'Todo App',
       theme: ThemeData(
-        // useMaterial3: false,
         primarySwatch: Colors.blue,
       ),
-      // A widget which will be started on application startup
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: TodoList(),
     );
   }
 }
 
-class MyHomePage extends StatelessWidget {
-  final String title;
-  const MyHomePage({super.key, required this.title});  
+class TodoList extends StatefulWidget {
+  @override
+  _TodoListState createState() => _TodoListState();
+}
+
+class _TodoListState extends State<TodoList> {
+  List<String> _todos = [];
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTodos();
+  }
+
+  Future<void> _loadTodos() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _todos = prefs.getStringList('todos') ?? [];
+    });
+  }
+
+  Future<void> _addTodo() async {
+    if (_controller.text.isNotEmpty) {
+      setState(() {
+        _todos.add(_controller.text);
+        _controller.clear();
+      });
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setStringList('todos', _todos);
+    }
+  }
+
+  Future<void> _removeTodo(int index) async {
+    setState(() {
+      _todos.removeAt(index);
+    });
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setStringList('todos', _todos);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // The title text which will be shown on the action bar
-        title: Text(title),
+        title: Text('Todo List'),
       ),
-      body: Center(
-        child: Text(
-          'Hello, World!',
-        ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: _controller,
+              decoration: InputDecoration(
+                labelText: 'Add a new todo',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (_) => _addTodo(),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _todos.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text(_todos[index]),
+                  trailing: IconButton(
+                    icon: Icon(Icons.delete),
+                    onPressed: () => _removeTodo(index),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addTodo,
+        tooltip: 'Add Todo',
+        child: Icon(Icons.add),
       ),
     );
   }
